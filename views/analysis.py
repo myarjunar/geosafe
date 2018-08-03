@@ -33,6 +33,7 @@ from geosafe.helpers.impact_summary.summary_base import ImpactSummary
 from geosafe.helpers.utils import get_layer_path
 from geosafe.models import Analysis, Metadata
 from geosafe.signals import analysis_post_save
+from geosafe.tasks.analysis import filter_impact_function
 
 LOGGER = logging.getLogger("geosafe")
 
@@ -355,15 +356,7 @@ def impact_function_filter(request):
         hazard_url = get_layer_path(hazard_layer)
         exposure_url = get_layer_path(exposure_layer)
 
-        # need to update function
-
-        # async_result = filter_impact_function.delay(
-        #     hazard_url,
-        #     exposure_url)
-        #
-        # impact_functions = async_result.get()
-
-        impact_functions = []
+        impact_functions = filter_impact_function(hazard_url, exposure_url)
 
         return HttpResponse(
             json.dumps(impact_functions), content_type="application/json")

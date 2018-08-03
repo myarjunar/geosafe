@@ -236,6 +236,40 @@ def clean_impact_result():
             i.delete()
 
 
+def filter_impact_function(hazard=None, exposure=None):
+    """Filter impact functions
+
+    :param hazard: URL or filepath of hazard
+    :type hazard: str
+
+    :param exposure: URL or filepath of exposure
+    :type exposure: str
+
+    :return: List of Impact Function metadata as dict
+    :rtype: list(dict)
+
+    """
+    if hazard:
+        async_result = get_keywords.delay(hazard, 'hazard')
+        hazard = async_result.get()
+    if exposure:
+        async_result = get_keywords.delay(exposure, 'exposure')
+        exposure = async_result.get()
+
+    if hazard and exposure:
+        analyses = Analysis.objects.filter(hazard=hazard, exposure=exposure)
+    else:
+        analyses = Analysis.objects.all()
+
+    impact_functions = [
+        {
+            'id': analysis.impact_function_id,
+            'name': analysis.impact_function_name
+        } for analysis in analyses
+    ]
+
+    return impact_functions
+
 def prepare_analysis(analysis_id):
     """Prepare and run analysis
 
