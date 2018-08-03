@@ -14,6 +14,7 @@ from geosafe.app_settings import settings
 # geosafe
 # list of tags to get to the InaSAFE keywords.
 # this is stored in a list so it can be easily used in a for loop
+from geosafe.tasks.analysis import filter_impact_function
 
 ISO_METADATA_KEYWORD_NESTING = [
     '{http://www.isotc211.org/2005/gmd}identificationInfo',
@@ -93,6 +94,13 @@ class Analysis(models.Model):
         blank=True,
         null=True,
     )
+    exposure = models.CharField(
+        max_length=255,
+        verbose_name='Exposure type',
+        help_text='Exposure type of the analysis.',
+        blank=True,
+        null=True,
+    )
     exposure_layer = models.ForeignKey(
         Layer,
         verbose_name='Exposure Layer',
@@ -100,6 +108,13 @@ class Analysis(models.Model):
         blank=False,
         null=False,
         related_name='exposure_layer'
+    )
+    hazard = models.CharField(
+        max_length=255,
+        verbose_name='Hazard type',
+        help_text='Hazard type of the analysis.',
+        blank=True,
+        null=True,
     )
     hazard_layer = models.ForeignKey(
         Layer,
@@ -121,6 +136,13 @@ class Analysis(models.Model):
         max_length=100,
         verbose_name='ID of Impact Function',
         help_text='The ID of Impact Function used in the analysis.',
+        blank=False,
+        null=False
+    )
+    impact_function_name = models.CharField(
+        max_length=255,
+        verbose_name='Name of Impact Function',
+        help_text='The name of Impact Function used in the analysis.',
         blank=False,
         null=False
     )
@@ -256,15 +278,8 @@ class Analysis(models.Model):
     @classmethod
     def impact_function_list(cls):
         if not cls._impact_function_list:
-            from geosafe.tasks.headless.analysis import filter_impact_function
-            cls._impact_function_list = filter_impact_function.delay().get()
+            cls._impact_function_list = filter_impact_function()
         return cls._impact_function_list
-
-    def impact_function_name(self):
-        for i in self.impact_function_list():
-            if i['id'] == self.impact_function_id:
-                return i['name']
-        return ''
 
     @classmethod
     def get_layer_url(cls, layer):
