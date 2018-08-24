@@ -10,6 +10,7 @@ from datetime import datetime
 from zipfile import ZipFile
 
 from celery import chain
+from celery.result import allow_join_result
 from django.core.urlresolvers import reverse
 from django.db.models.query_utils import Q
 from lxml import etree
@@ -26,7 +27,7 @@ from geosafe.helpers.utils import (
     get_impact_path)
 from geosafe.models import Analysis, Metadata
 from geosafe.tasks.headless.analysis import (
-    get_keywords, run_analysis, RESULT_SUCCESS)
+    get_keywords, generate_report, run_analysis, RESULT_SUCCESS)
 
 __author__ = 'lucernae'
 
@@ -296,6 +297,16 @@ def process_impact_result(self, impact_result, analysis_id):
     if impact_result['status'] == RESULT_SUCCESS:
         impact_url = impact_result['output']['impact_analysis']
 
+        # generate report when analysis has ran successfully
+        async = generate_report.delay(impact_url)
+        with allow_join_result():
+            report_metadata = (
+                async.get().get('output', {}).get('pdf_product_tag', {}))
+
+        for report_key, report_url in report_metadata.iteritems():
+            report_url = download_file(report_url, direct_access=True)
+            report_metadata[report_key] = report_url
+
         # decide if we are using direct access or not
         impact_url = get_impact_path(impact_url)
 
@@ -329,6 +340,7 @@ def process_impact_result(self, impact_result, analysis_id):
             filename = os.path.basename(impact_path)
             basename, ext = os.path.splitext(filename)
             success = process_impact_layer(analysis, basename, dir_name, filename)
+            report_success = process_impact_report(analysis, report_metadata)
 
             # cleanup
             for name in os.listdir(dir_name):
@@ -371,8 +383,7 @@ def process_impact_layer(analysis, basename, dir_name, name):
     :return: True if success
     """
     saved_layer = file_upload(
-        os.path.join(dir_name, name),
-        overwrite=True)
+        os.path.join(dir_name, name))
     saved_layer.set_default_permissions()
     if analysis.user_title:
         layer_name = analysis.user_title
@@ -402,4 +413,47 @@ def process_impact_layer(analysis, basename, dir_name, name):
     if current_impact:
         current_impact.delete()
     success = True
+    return success
+
+
+def process_impact_report(analysis, report_metadata):
+    """Internal method to process impact report.
+
+    :param analysis: Analysis object
+    :type analysis: Analysis
+
+    :param report_metadata: Impact report metadata
+    :type report_metadata: dict
+
+    :return: True if success
+    """
+    success = False
+    try:
+        # extract report (map and table report)
+        map_reports = [
+            'inasafe-map-report-portrait',
+            'inasafe-map-report-landscape',
+        ]
+        table_reports = [
+            'impact-report-pdf'
+        ]
+
+        # upload using document upload form post request
+        #TODO: find out how to upload document using post request
+
+        # assign report to analysis model
+        if os.path.exists(report_metadata[map_reports[0]]):
+            analysis.assign_report_map(report_metadata[map_reports[0]])
+        if os.path.exists(report_metadata[table_reports[0]]):
+            analysis.assign_report_table(report_metadata[table_reports[0]])
+        analysis.save()
+
+        # reference to impact layer
+        # TODO: find out how to upload document using post request first
+
+        success = True
+    except Exception as e:
+        LOGGER.debug(e)
+        pass
+
     return success
