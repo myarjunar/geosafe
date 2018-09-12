@@ -210,7 +210,11 @@ def set_layer_purpose(keywords, layer_id):
     layer = Layer.objects.get(id=layer_id)
     metadata, created = Metadata.objects.get_or_create(layer=layer)
 
-    metadata.layer_purpose = keywords.get('layer_purpose', None)
+    layer_purpose = keywords.get('layer_purpose', None)
+    metadata.layer_purpose = (
+        layer_purpose if (
+            layer_purpose != 'hazard_aggregation_summary') else (
+            'impact_analysis'))
     metadata.category = keywords.get(metadata.layer_purpose, None)
     metadata.save()
 
@@ -297,7 +301,9 @@ def process_impact_result(self, impact_result, analysis_id):
     analysis.save()
 
     if impact_result['status'] == RESULT_SUCCESS:
-        impact_url = impact_result['output']['impact_analysis']
+        impact_url = (
+            impact_result['output'].get('impact_analysis') or
+            impact_result['output'].get('hazard_aggregation_summary'))
 
         # decide if we are using direct access or not
         impact_url = get_impact_path(impact_url)
