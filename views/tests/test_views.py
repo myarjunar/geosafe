@@ -464,6 +464,7 @@ class AnalysisTest(GeoSAFEIntegrationLiveServerTestCase):
             'en': InaSAFETestData.qgis_templates('map-report-portrait.qpt')})
     def test_run_analysis_custom_template(self):
         """Test running analysis with custom report template."""
+        # What's wrong with this test
         data_helper = self.data_helper
         self.process_analysis(
             hazard_layer=data_helper.hazard('flood_data.geojson'),
