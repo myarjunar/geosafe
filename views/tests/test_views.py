@@ -17,7 +17,7 @@ from geosafe.helpers.utils import wait_metadata, \
 from geosafe.models import Analysis
 from geosafe.views.analysis import retrieve_layers
 
-LOGGER = logging.getLogger(__file__)
+LOGGER = logging.getLogger(__name__)
 
 
 class ViewsTest(GeoSAFEIntegrationLiveServerTestCase):
@@ -412,7 +412,7 @@ class AnalysisTest(GeoSAFEIntegrationLiveServerTestCase):
         self.assertIsNotNone(analysis.report_table)
 
         # Clean up layers
-        for layer in [l for l in layers.items() if isinstance(l, Layer)]:
+        for layer in [l for _, l in layers.items() if isinstance(l, Layer)]:
             layer.delete()
         impact_layer.delete()
 
